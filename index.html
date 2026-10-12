@@ -2859,8 +2859,9 @@ const v67ExportBase=$('exportState').onclick;
 $('exportState').onclick=()=>{const original=downloadBlob;downloadBlob=function(txt,name,type){try{const x=JSON.parse(txt);x.version='6.7';x.v67EPSAccountRules=v67Rules;txt=JSON.stringify(x,null,2);name='estado_oportunidades_v6_7_'+todayISO()+'.json'}catch(e){}return original(txt,name,type)};try{v67ExportBase()}finally{downloadBlob=original}};
 const ruleBtn=document.createElement('button');ruleBtn.className='tab-btn';ruleBtn.textContent='Descargar reglas EPS';ruleBtn.title='CSV editable: Cuenta, EPS, Alias y Activo. Cárgalo en Actualizar detalle.';ruleBtn.onclick=()=>{const keys=['Cuenta','EPS','Alias','Activo','Fuente','FechaConfirmacion'],esc=x=>'"'+String(x??'').replaceAll('"','""')+'"';downloadBlob('\uFEFF'+[keys,...v67Rules.map(r=>keys.map(k=>r[k]))].map(row=>row.map(esc).join(',')).join('\r\n'),'reglas_cuentas_eps_v6_7.csv','text/csv;charset=utf-8')};$('exportState').insertAdjacentElement('afterend',ruleBtn);
  
-// Liga de SharePoint
-const ONEDRIVE_CSV_URL = "https://onuris-my.sharepoint.com/:x:/r/personal/65076861_onuriscp_com/Documents/Dashboard%20Preventa/DetalleOportunidades.csv?d=wbd376cc24d4b415eaec79820c2066144&csf=1&web=1&e=y9DzZf";
+// Obtensión de datos
+const ENCRYPTED_JSON_URL =
+  "https://epsltc.github.io/DashboardPreventa/detalle_oportunidades.enc.json";
 
 // Función de OneDrive
 
@@ -2924,17 +2925,15 @@ async function actualizarDesdeOneDrive(manual = false) {
 }
 
 // Actualización al abrir el dashboard.
-actualizarDesdeOneDrive();
+actualizarDesdeJSON();
 
 // Actualización automática cada 30 minutos.
 setInterval(() => {
-  actualizarDesdeOneDrive();
+  actualizarDesdeJSON();
 }, 30 * 60 * 1000);
 
 // Permite actualizar manualmente con el botón.
-document.getElementById("refreshOneDrive")?.addEventListener(
-  "click",
-  () => actualizarDesdeOneDrive(true)
+() => actualizarDesdeJSON(true)
 );
 
 V664_BOOTING=false;rebuildData();renderAll();if(["historical","capacity"].includes(activeTab))switchTab(activeTab,false);
