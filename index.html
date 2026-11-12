@@ -4042,12 +4042,79 @@ const filterToggle=$('v674FilterToggle');if(filterToggle)document.body.append(fi
 const sidebar=$('v674FilterPanel');
 if(sidebar)document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sidebar.classList.contains('open')){v68Sidebar(false);filterToggle?.focus()}});
 merge(feed(seed[dayFile],dayFile));merge(feed(seed[sweepFile],sweepFile,true));
+
+async function loadRemoteCSV(){
+  try {
+    const response = await fetch(
+      'https://eps-dashboard-api.luis-tenorio.workers.dev/api/opportunities',
+      { cache: 'no-store' }
+    );
+
+    if (!response.ok) {
+      throw new Error('Error HTTP ' + response.status);
+    }
+
+    const csvText = await response.text();
+    const rows = parseCSV(csvText);
+
+    if (!rows.length) {
+      throw new Error('El CSV remoto está vacío.');
+    }
+
+    const keys = Object.keys(rows[0]).map(normalizeHeader);
+
+    if (!keys.includes('TIPOMOVIMIENTO') || !keys.includes('ESTATUS')) {
+      throw new Error('El CSV no contiene las columnas requeridas.');
+    }
+
+    const cuts = [...new Set(
+      rows.map(r => {
+        const value = String(r.FechaCorteFuente || '');
+        const match = value.match(/\d{4}-\d{2}-\d{2}/);
+        return match ? match[0] : '';
+      }).filter(Boolean)
+    )].sort();
+
+    if (!cuts.length) {
+      throw new Error('No se encontró una FechaCorteFuente válida.');
+    }
+
+    const cut = cuts[cuts.length - 1];
+    const filename = cut + '__consolidado_oportunidades.csv';
+
+    let result;
+
+    await v671Transaction(() => {
+      result = v671Daily(rows, filename);
+    });
+
+    toast(
+      'Actualización automática: ' +
+      result.rows + ' filas conciliadas · ' +
+      result.changed + ' cambios.'
+    );
+
+    console.info('Actualización remota completada:', {
+      fechaCorte: cut,
+      filas: result.rows,
+      cambios: result.changed
+    });
+
+  } catch (error) {
+    console.error('Error al actualizar desde Cloudflare:', error);
+    toast('No se pudo actualizar desde Google Drive: ' + error.message);
+  }
+}
+
 async function init(){
  try{
   if(!metadata().dailyApplied)await v671Transaction(()=>{v674Standard(seed[dayFile],dayFile);metadata().dailyApplied=true});
   else {renderAll();scheduleSize()}
  }catch(e){console.error('Carga inicial 6.9:',e);refresh();toast('Se conservaron las cotizaciones; no se aplicó el corte de oportunidades: '+e.message)}
  window.dispatchEvent(new Event('release69-ready'));
+
+await loadRemoteCSV();
+
 }
 window.release69={qrows,metadata,feed,merge,refresh,families,isRfp};
 init();
