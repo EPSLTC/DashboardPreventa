@@ -610,16 +610,26 @@ body .v674-arch-name{font-size:13px;line-height:1.5;white-space:normal;word-brea
     </div>
     <div class="top-actions v63-actions">
       <button id="backView" class="tab-btn" disabled>← Volver</button>
-
+	
+	<!--
       <label class="tab-btn v63-primary-import" style="cursor:pointer">
         Actualizar datos CSV/JSON
         <input id="detailImport" type="file" accept=".csv,.json,.txt" hidden>
       </label>
+	-->
+	<button id="configureRemoteSource" class="tab-btn">
+ 	 Configurar fuente
+	</button>
+
+	<button id="refreshRemoteSource" class="tab-btn">
+ 	 Actualizar desde la fuente
+	</button>
 
       <button id="exportState" class="tab-btn">Exportar estado / auditoría</button>
 
       <!-- Controles heredados: existen para compatibilidad interna, pero ya no se muestran. -->
       <div class="v63-legacy-controls" aria-hidden="true">
+	<input id="detailImport" type="file" accept=".csv,.json,.txt" hidden>
         <input id="slackImport" type="file" accept=".csv,.txt" multiple>
         <input id="stateImport" type="file" accept=".json">
         <select id="principalImportMode">
@@ -4045,10 +4055,17 @@ merge(feed(seed[dayFile],dayFile));merge(feed(seed[sweepFile],sweepFile,true));
 
 async function loadRemoteCSV(){
   try {
-    const response = await fetch(
-      'https://eps-dashboard-api.luis-tenorio.workers.dev/api/opportunities',
-      { cache: 'no-store' }
-    );
+
+const savedFileId = localStorage.getItem('epsRemoteDriveFileIdV1')
+  || '1QoC6iKikHZdX1Y0HLKFVWFrutNeZysOe';
+
+const remoteURL =
+  'https://eps-dashboard-api.luis-tenorio.workers.dev/api/opportunities?fileId='
+  + encodeURIComponent(savedFileId);
+
+const response = await fetch(remoteURL, {
+  cache: 'no-store'
+});
 
     if (!response.ok) {
       throw new Error('Error HTTP ' + response.status);
@@ -4105,6 +4122,60 @@ async function loadRemoteCSV(){
     toast('No se pudo actualizar desde Google Drive: ' + error.message);
   }
 }
+
+// CONFIGURACIÓN DE FUENTE GOOGLE DRIVE
+
+function configureRemoteSource() {
+
+  const currentId = localStorage.getItem('epsRemoteDriveFileIdV1')
+    || '1QoC6iKikHZdX1Y0HLKFVWFrutNeZysOe';
+
+  const input = prompt(
+    'Pega la URL compartida de Google Drive o el ID del archivo CSV:',
+    'https://drive.google.com/file/d/' + currentId + '/view'
+  );
+
+  if (input === null) return;
+
+  const value = input.trim();
+
+  let fileId = value;
+
+  // Extraer ID si se proporciona una URL de Google Drive
+  const match = value.match(/\/d\/([A-Za-z0-9_-]+)/);
+
+  if (match) {
+    fileId = match[1];
+  } else {
+    try {
+      const parsed = new URL(value);
+
+      if (parsed.searchParams.has('id')) {
+        fileId = parsed.searchParams.get('id');
+      }
+    } catch (e) {
+      // Se permite introducir directamente el ID
+    }
+  }
+
+  if (!/^[A-Za-z0-9_-]{10,}$/.test(fileId)) {
+    toast('La URL o el ID de Google Drive no son válidos.');
+    return;
+  }
+
+  localStorage.setItem('epsRemoteDriveFileIdV1', fileId);
+
+  toast('Fuente de Google Drive configurada correctamente.');
+}
+
+
+// BOTONES DE ACTUALIZACIÓN
+
+document.getElementById('configureRemoteSource')
+  ?.addEventListener('click', configureRemoteSource);
+
+document.getElementById('refreshRemoteSource')
+  ?.addEventListener('click', loadRemoteCSV);
 
 async function init(){
  try{
