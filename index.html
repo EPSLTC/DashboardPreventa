@@ -4084,28 +4084,25 @@ const response = await fetch(remoteURL, {
       throw new Error('El CSV no contiene las columnas requeridas.');
     }
 
-    const fechaCorteKey = Object.keys(rows[0]).find(
+	const fechaCorteKey = Object.keys(rows[0]).find(
 	  key => normalizeHeader(key) === 'FECHACORTEFUENTE'
 	);
 
-	if (!fechaCorteKey) {
-	  throw new Error('El CSV no contiene la columna FechaCorteFuente.');
-	}
+	const cuts = fechaCorteKey
+	  ? [...new Set(
+	      rows.map(r => {
+	        const value = String(r[fechaCorteKey] || '');
+	        const match = value.match(/\d{4}-\d{2}-\d{2}/);
+	        return match ? match[0] : '';
+	      }).filter(Boolean)
+	    )].sort()
+	  : [];
 
-	const cuts = [...new Set(
-	  rows.map(r => {
-	    const value = String(r[fechaCorteKey] || '');
-	    const match = value.match(/\d{4}-\d{2}-\d{2}/);
-	    return match ? match[0] : '';
-	  }).filter(Boolean)
-	)].sort();
-
-    if (!cuts.length) {
-      throw new Error('No se encontró una FechaCorteFuente válida.');
-    }
-
-    const cut = cuts[cuts.length - 1];
-    const filename = cut + '__consolidado_oportunidades.csv';
+	const cut = cuts.length
+	  ? cuts[cuts.length - 1]
+	  : new Date().toISOString().slice(0, 10);
+	
+	const filename = cut + '__consolidado_oportunidades.csv';
 
     let result;
 
